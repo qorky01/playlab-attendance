@@ -683,7 +683,6 @@ window.signInWithGoogle = async () => {
     const email = result.user.email;
     if (ALLOWED_EMAILS.length > 0 && !ALLOWED_EMAILS.includes(email)) {
       await signOut(auth);
-      try { localStorage.clear(); sessionStorage.clear(); } catch(e) {}
       hideLoading();
       showLoginError(`접근 권한이 없습니다 (${email})`);
       return;
@@ -698,8 +697,6 @@ onAuthStateChanged(auth, async (user) => {
   if (user) {
     if (ALLOWED_EMAILS.length > 0 && !ALLOWED_EMAILS.includes(user.email)) {
       await signOut(auth);
-      // 로컬 스토리지·세션 클리어
-      try { localStorage.clear(); sessionStorage.clear(); } catch(e) {}
       hideLoading();
       showScreen('loginScreen');
       showLoginError(`접근 권한이 없습니다 (${user.email})`);
