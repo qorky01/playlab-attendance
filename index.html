@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="출근부">
@@ -25,32 +25,60 @@
       --danger-dim: rgba(255,92,92,0.12);
       --radius: 14px;
       --radius-sm: 8px;
+
+      /* Safe area 변수 */
+      --sat: env(safe-area-inset-top, 0px);
+      --sab: env(safe-area-inset-bottom, 0px);
+      --sal: env(safe-area-inset-left, 0px);
+      --sar: env(safe-area-inset-right, 0px);
+
+      /* 네비 높이 = 아이콘+텍스트+패딩 + safe area bottom */
+      --nav-height: 56px;
+      --nav-total: calc(var(--nav-height) + var(--sab));
+
+      /* 헤더 높이 = 콘텐츠 + safe area top */
+      --header-content: 56px;
+      --header-total: calc(var(--header-content) + var(--sat));
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    *, *::before, *::after {
+      box-sizing: border-box; margin: 0; padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden; /* 전체 스크롤 차단, 내부에서만 */
+    }
 
     body {
       font-family: 'Noto Sans KR', sans-serif;
       background: var(--bg);
       color: var(--text);
-      min-height: 100dvh;
-      overflow-x: hidden;
+      /* iOS 고정 레이아웃 */
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
     }
 
     /* ─── SCREENS ─── */
-    .screen { display: none; min-height: 100dvh; flex-direction: column; }
+    .screen {
+      display: none;
+      position: absolute; inset: 0;
+      flex-direction: column;
+      overflow: hidden;
+    }
     .screen.active { display: flex; }
 
     /* ─── LOGIN ─── */
     #loginScreen {
       align-items: center;
       justify-content: center;
-      padding: 40px 24px;
+      padding: calc(var(--sat) + 40px) 24px calc(var(--sab) + 40px);
       gap: 48px;
     }
-    .login-logo {
-      text-align: center;
-    }
+    .login-logo { text-align: center; }
     .login-logo .mark {
       width: 72px; height: 72px;
       background: var(--accent);
@@ -59,12 +87,8 @@
       margin: 0 auto 20px;
       font-size: 32px;
     }
-    .login-logo h1 {
-      font-size: 22px; font-weight: 700; letter-spacing: -0.5px;
-    }
-    .login-logo p {
-      color: var(--text-muted); font-size: 13px; margin-top: 6px;
-    }
+    .login-logo h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .login-logo p { color: var(--text-muted); font-size: 13px; margin-top: 6px; }
     .google-btn {
       display: flex; align-items: center; gap: 12px;
       background: var(--surface);
@@ -75,11 +99,9 @@
       font-family: 'Noto Sans KR', sans-serif;
       font-size: 15px; font-weight: 500;
       color: var(--text);
-      transition: all 0.2s;
       width: 100%; max-width: 300px;
       justify-content: center;
     }
-    .google-btn:hover { background: var(--surface2); border-color: var(--accent); }
     .google-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
     .login-error {
       color: var(--danger); font-size: 13px; text-align: center;
@@ -90,15 +112,29 @@
       display: none;
     }
 
+    /* ─── APP LAYOUT: header + content + nav 3단 고정 ─── */
+    #appScreen {
+      display: none;
+      flex-direction: column;
+      position: absolute; inset: 0;
+    }
+    #appScreen.active { display: flex; }
+
     /* ─── HEADER ─── */
     .app-header {
-      position: sticky; top: 0; z-index: 100;
+      flex-shrink: 0;
       background: var(--bg);
       border-bottom: 1px solid var(--border);
-      padding: 16px 20px;
+      /* safe area top 반영 */
+      padding-top: calc(var(--sat) + 12px);
+      padding-bottom: 12px;
+      padding-left: calc(var(--sal) + 20px);
+      padding-right: calc(var(--sar) + 20px);
       display: flex; align-items: center; justify-content: space-between;
+      z-index: 10;
     }
     .app-header h2 { font-size: 16px; font-weight: 600; }
+    .header-label { font-size: 11px; color: var(--text-muted); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
     .header-actions { display: flex; gap: 8px; }
     .icon-btn {
       width: 36px; height: 36px;
@@ -107,416 +143,271 @@
       border-radius: var(--radius-sm);
       display: flex; align-items: center; justify-content: center;
       cursor: pointer; color: var(--text); font-size: 16px;
-      transition: all 0.15s;
     }
-    .icon-btn:hover { background: var(--surface2); border-color: var(--accent); color: var(--accent); }
 
-    /* ─── NAV ─── */
+    /* ─── TAB WRAPPERS ─── */
+    .tab-content {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden; /* 자식이 스크롤하도록 */
+      min-height: 0;
+    }
+    .tab-content.active-tab { display: flex; }
+
+    /* ─── SCROLL AREA ─── */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      padding: 16px calc(var(--sar) + 16px) 16px calc(var(--sal) + 16px);
+      /* nav 높이만큼 여백 */
+      padding-bottom: calc(var(--nav-total) + 16px);
+    }
+
+    /* ─── BOTTOM NAV ─── */
     .bottom-nav {
-      position: fixed; bottom: 0; left: 0; right: 0;
+      flex-shrink: 0;
       background: var(--surface);
       border-top: 1px solid var(--border);
       display: flex;
-      padding-bottom: env(safe-area-inset-bottom);
-      z-index: 100;
+      /* safe area bottom */
+      padding-bottom: var(--sab);
+      z-index: 10;
     }
     .nav-item {
-      flex: 1; padding: 12px 0;
-      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      flex: 1;
+      height: var(--nav-height);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
       cursor: pointer; color: var(--text-muted);
       font-size: 10px; font-weight: 500;
-      transition: color 0.15s;
       border: none; background: none;
+      -webkit-appearance: none;
     }
-    .nav-item .nav-icon { font-size: 20px; }
+    .nav-item .nav-icon { font-size: 22px; line-height: 1; }
     .nav-item.active { color: var(--accent); }
 
-    /* ─── MAIN CONTENT ─── */
-    .content {
-      flex: 1;
-      padding: 20px;
-      padding-bottom: calc(80px + env(safe-area-inset-bottom));
-      overflow-y: auto;
-    }
-
-    /* ─── HOME / 출근 기록 ─── */
+    /* ─── DATE STRIP ─── */
     .date-strip {
       display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
-    .date-strip .date-label {
-      font-size: 20px; font-weight: 700; letter-spacing: -0.5px;
+    .date-strip .date-label { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+    .date-strip .day-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .date-nav { display: flex; align-items: center; gap: 6px; }
+    .date-nav-btn {
+      width: 34px; height: 34px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text); font-size: 16px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
     }
-    .date-strip .day-label {
-      font-size: 12px; color: var(--text-muted); margin-top: 2px;
-    }
-    .today-btn {
-      background: var(--accent-dim);
-      border: 1px solid var(--accent);
-      color: var(--accent);
-      border-radius: 20px;
-      padding: 6px 14px;
-      font-size: 12px; font-weight: 600;
-      cursor: pointer;
-      font-family: 'Noto Sans KR', sans-serif;
+    .date-display {
+      font-family: 'DM Mono', monospace; font-size: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 6px 10px; cursor: pointer;
     }
 
     /* ─── EMPLOYEE CARDS ─── */
-    .employee-grid { display: flex; flex-direction: column; gap: 12px; }
-
+    .employee-grid { display: flex; flex-direction: column; gap: 10px; }
     .emp-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      transition: border-color 0.2s;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
     }
-    .emp-card.has-record { border-color: rgba(212,240,78,0.3); }
-
+    .emp-card.has-record { border-color: rgba(212,240,78,0.35); }
     .emp-card-header {
-      padding: 14px 16px;
+      padding: 13px 14px;
       display: flex; align-items: center; justify-content: space-between;
-      cursor: pointer;
+      cursor: pointer; user-select: none;
     }
-    .emp-info { display: flex; align-items: center; gap: 12px; }
+    .emp-info { display: flex; align-items: center; gap: 10px; }
     .emp-avatar {
-      width: 38px; height: 38px;
-      border-radius: 50%;
+      width: 36px; height: 36px; border-radius: 50%;
       background: var(--surface2);
       display: flex; align-items: center; justify-content: center;
-      font-size: 15px; font-weight: 700;
-      color: var(--accent);
-      border: 1px solid var(--border);
-      flex-shrink: 0;
+      font-size: 14px; font-weight: 700; color: var(--accent);
+      border: 1px solid var(--border); flex-shrink: 0;
     }
-    .emp-name { font-size: 15px; font-weight: 600; }
-    .emp-type { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .emp-name { font-size: 14px; font-weight: 600; }
+    .emp-type { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
     .record-badge {
-      font-family: 'DM Mono', monospace;
-      font-size: 12px;
-      color: var(--accent);
-      background: var(--accent-dim);
-      padding: 4px 10px;
-      border-radius: 20px;
+      font-family: 'DM Mono', monospace; font-size: 11px;
+      color: var(--accent); background: var(--accent-dim);
+      padding: 4px 9px; border-radius: 20px; white-space: nowrap;
     }
     .no-record-badge {
-      font-size: 11px;
-      color: var(--text-dim);
-      padding: 4px 10px;
-      background: var(--surface2);
-      border-radius: 20px;
+      font-size: 11px; color: var(--text-dim);
+      padding: 4px 9px; background: var(--surface2); border-radius: 20px;
     }
 
     /* ─── RECORD FORM ─── */
     .record-form {
-      padding: 0 16px 16px;
-      display: none;
-      flex-direction: column;
-      gap: 12px;
+      padding: 0 14px 14px;
+      display: none; flex-direction: column; gap: 10px;
       border-top: 1px solid var(--border);
     }
     .record-form.open { display: flex; }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-    .form-group { display: flex; flex-direction: column; gap: 6px; }
-    .form-group.full { grid-column: 1 / -1; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
     .form-label {
-      font-size: 11px; font-weight: 600;
+      font-size: 10px; font-weight: 600;
       color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase;
     }
 
-    select, input[type="text"] {
+    /* iOS input 기본 스타일 통일 */
+    select, input[type="text"], input[type="date"], input[type="number"] {
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      padding: 10px 12px;
+      padding: 11px 12px;
       color: var(--text);
       font-family: 'DM Mono', monospace;
-      font-size: 14px;
+      font-size: 15px; /* iOS 16px 미만이면 자동 줌 발생 → 15px로 */
       width: 100%;
-      appearance: none;
-      -webkit-appearance: none;
+      appearance: none; -webkit-appearance: none;
+      -webkit-text-size-adjust: 100%;
     }
-    select:focus, input[type="text"]:focus {
-      outline: none;
-      border-color: var(--accent);
-    }
+    select:focus, input:focus { outline: none; border-color: var(--accent); }
     select option { background: var(--surface2); }
 
-    .form-actions {
-      display: flex; gap: 8px; padding-top: 4px;
-    }
+    .form-actions { display: flex; gap: 8px; padding-top: 2px; }
     .btn {
-      padding: 11px 16px;
+      padding: 13px 16px;
       border-radius: var(--radius-sm);
       font-family: 'Noto Sans KR', sans-serif;
-      font-size: 13px; font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s;
-      border: none;
+      font-size: 14px; font-weight: 600;
+      cursor: pointer; border: none;
+      -webkit-appearance: none;
     }
-    .btn-primary {
-      background: var(--accent);
-      color: #0f0f0f;
-      flex: 1;
-    }
-    .btn-primary:hover { opacity: 0.9; }
-    .btn-danger {
-      background: var(--danger-dim);
-      color: var(--danger);
-      border: 1px solid var(--danger);
-    }
-    .btn-ghost {
-      background: var(--surface2);
-      color: var(--text-muted);
-      border: 1px solid var(--border);
-    }
+    .btn-primary { background: var(--accent); color: #0f0f0f; flex: 1; }
+    .btn-danger { background: var(--danger-dim); color: var(--danger); border: 1px solid var(--danger); }
+    .btn-ghost { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
 
     /* ─── HISTORY ─── */
     .month-nav {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 20px;
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
     }
-    .month-nav h3 { font-size: 18px; font-weight: 700; }
     .month-nav-btns { display: flex; gap: 6px; }
     .month-btn {
       width: 32px; height: 32px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text);
-      font-size: 14px;
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text); font-size: 14px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
     }
-
-    .emp-section { margin-bottom: 24px; }
+    .emp-section { margin-bottom: 20px; }
     .emp-section-header {
       display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 10px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--border);
+      margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
     }
     .emp-section-name { font-size: 14px; font-weight: 600; }
-    .emp-section-total {
-      font-family: 'DM Mono', monospace;
-      font-size: 12px; color: var(--accent);
-    }
-
+    .emp-section-total { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent); }
     .record-row {
       display: flex; align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid var(--border);
-      gap: 12px;
+      padding: 9px 0; border-bottom: 1px solid var(--border); gap: 8px;
     }
     .record-row:last-child { border-bottom: none; }
-    .record-date {
-      font-family: 'DM Mono', monospace;
-      font-size: 13px; color: var(--text-muted);
-      width: 52px; flex-shrink: 0;
-    }
-    .record-time {
-      font-family: 'DM Mono', monospace;
-      font-size: 13px; flex: 1;
-    }
+    .record-date { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); width: 50px; flex-shrink: 0; }
+    .record-time { font-family: 'DM Mono', monospace; font-size: 12px; flex: 1; }
     .record-hours {
-      font-family: 'DM Mono', monospace;
-      font-size: 12px;
-      color: var(--accent);
-      background: var(--accent-dim);
-      padding: 3px 8px;
-      border-radius: 10px;
-    }
-    .record-note {
-      font-size: 11px; color: var(--text-muted);
-      flex: 1;
+      font-family: 'DM Mono', monospace; font-size: 11px;
+      color: var(--accent); background: var(--accent-dim);
+      padding: 3px 7px; border-radius: 10px; flex-shrink: 0;
     }
     .record-edit-btn {
       color: var(--text-dim); font-size: 14px;
-      background: none; border: none; cursor: pointer;
-      padding: 4px 6px;
-    }
-    .record-edit-btn:hover { color: var(--accent); }
-
-    /* ─── EXPORT ─── */
-    .export-section { margin-bottom: 24px; }
-    .export-section h3 {
-      font-size: 15px; font-weight: 600; margin-bottom: 12px;
-    }
-    .export-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 12px;
-    }
-    .export-info .export-name { font-size: 14px; font-weight: 600; }
-    .export-info .export-sub { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
-    .btn-export {
-      background: var(--accent);
-      color: #0f0f0f;
-      border: none;
-      border-radius: var(--radius-sm);
-      padding: 9px 16px;
-      font-family: 'Noto Sans KR', sans-serif;
-      font-size: 12px; font-weight: 700;
-      cursor: pointer;
-      white-space: nowrap;
+      background: none; border: none; cursor: pointer; padding: 4px 6px;
     }
 
     /* ─── EMPLOYEES MGMT ─── */
     .emp-mgmt-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
     .emp-mgmt-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-      display: flex; align-items: center; justify-content: space-between;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 13px 14px;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
     }
     .emp-mgmt-card.inactive { opacity: 0.5; }
     .emp-mgmt-info .name { font-size: 14px; font-weight: 600; }
-    .emp-mgmt-info .meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
-    .emp-mgmt-actions { display: flex; gap: 6px; }
-    .tag {
-      font-size: 10px; font-weight: 600;
-      padding: 3px 8px; border-radius: 10px;
-    }
+    .emp-mgmt-info .meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .emp-mgmt-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+    .tag { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 10px; }
     .tag-active { background: var(--accent-dim); color: var(--accent); }
     .tag-inactive { background: var(--surface2); color: var(--text-dim); }
-
-    /* ─── ADD EMPLOYEE FORM ─── */
     .add-emp-form {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-      display: flex; flex-direction: column; gap: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px;
+      display: flex; flex-direction: column; gap: 10px;
     }
-    .add-emp-form h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
-    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-    input[type="date"], input[type="number"] {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 10px 12px;
-      color: var(--text);
-      font-family: 'DM Mono', monospace;
-      font-size: 14px;
-      width: 100%;
-    }
-    input[type="date"]:focus, input[type="number"]:focus {
-      outline: none; border-color: var(--accent);
-    }
+    .add-emp-form h4 { font-size: 13px; font-weight: 600; }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
     /* ─── LOADING ─── */
     .loading-overlay {
       position: fixed; inset: 0;
       background: var(--bg);
       display: flex; align-items: center; justify-content: center;
-      flex-direction: column; gap: 16px;
-      z-index: 999;
+      flex-direction: column; gap: 16px; z-index: 999;
     }
     .spinner {
       width: 32px; height: 32px;
-      border: 3px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     .loading-text { font-size: 13px; color: var(--text-muted); }
 
     /* ─── TOAST ─── */
     .toast {
-      position: fixed; bottom: calc(80px + 12px + env(safe-area-inset-bottom));
-      left: 50%; transform: translateX(-50%) translateY(20px);
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 10px 20px;
+      position: fixed;
+      bottom: calc(var(--nav-total) + 12px);
+      left: 50%; transform: translateX(-50%) translateY(16px);
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 20px;
       font-size: 13px; font-weight: 500;
-      opacity: 0; transition: all 0.3s;
-      pointer-events: none; white-space: nowrap;
-      z-index: 200;
+      opacity: 0; transition: all 0.25s;
+      pointer-events: none; white-space: nowrap; z-index: 200;
     }
-    .toast.show {
-      opacity: 1; transform: translateX(-50%) translateY(0);
-    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     .toast.success { border-color: var(--accent); color: var(--accent); }
     .toast.error { border-color: var(--danger); color: var(--danger); }
 
     /* ─── EMPTY STATE ─── */
-    .empty-state {
-      text-align: center; padding: 48px 20px;
-      color: var(--text-muted); font-size: 13px;
-    }
+    .empty-state { text-align: center; padding: 48px 20px; color: var(--text-muted); font-size: 13px; }
     .empty-state .emoji { font-size: 36px; margin-bottom: 12px; }
 
-    /* ─── MODAL ─── */
+    /* ─── MODAL (bottom sheet) ─── */
     .modal-backdrop {
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.7);
-      z-index: 300; display: none;
-      align-items: flex-end;
+      z-index: 300; display: none; align-items: flex-end;
     }
     .modal-backdrop.open { display: flex; }
     .modal {
+      position: relative;
       background: var(--surface);
       border-top: 1px solid var(--border);
       border-radius: 20px 20px 0 0;
       padding: 24px 20px;
-      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+      padding-bottom: calc(var(--sab) + 24px);
       width: 100%;
-      display: flex; flex-direction: column; gap: 14px;
+      display: flex; flex-direction: column; gap: 12px;
       animation: slideUp 0.25s ease-out;
+      max-height: 90dvh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
-    @keyframes slideUp {
-      from { transform: translateY(100%); }
-      to { transform: translateY(0); }
-    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     .modal h3 { font-size: 16px; font-weight: 700; }
     .modal-close {
       position: absolute; top: 16px; right: 16px;
       background: var(--surface2); border: none;
       color: var(--text-muted); font-size: 18px;
-      width: 30px; height: 30px;
-      border-radius: 50%; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .modal { position: relative; }
-
-    .section-title {
-      font-size: 11px; font-weight: 700;
-      color: var(--text-muted); letter-spacing: 1px;
-      text-transform: uppercase; margin-bottom: 8px;
-    }
-
-    /* 날짜 네비게이션 */
-    .date-nav {
-      display: flex; align-items: center; gap: 8px;
-    }
-    .date-nav-btn {
-      width: 32px; height: 32px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text); font-size: 14px;
+      width: 30px; height: 30px; border-radius: 50%;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
     }
-    .date-display {
-      font-family: 'DM Mono', monospace;
-      font-size: 13px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 6px 12px;
-      cursor: pointer;
+
+    .section-title {
+      font-size: 11px; font-weight: 700; color: var(--text-muted);
+      letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;
     }
   </style>
 </head>
@@ -554,14 +445,14 @@
 <div class="screen" id="appScreen">
 
   <!-- HOME TAB -->
-  <div id="homeTab" class="tab-content active-tab">
+  <div id="homeTab" class="tab-content active-tab" style="display:flex;">
     <div class="app-header">
       <div>
-        <div style="font-size:11px;color:var(--text-muted);font-weight:600;letter-spacing:1px;text-transform:uppercase;">출근 기록</div>
+        <div class="header-label">출근 기록</div>
         <h2 id="headerDateLabel">오늘</h2>
       </div>
       <div class="header-actions">
-        <div class="icon-btn" onclick="goToday()" title="오늘">📅</div>
+        <div class="icon-btn" onclick="goToday()">📅</div>
       </div>
     </div>
     <div class="content">
@@ -581,14 +472,14 @@
   </div>
 
   <!-- HISTORY TAB -->
-  <div id="historyTab" class="tab-content" style="display:none;">
+  <div id="historyTab" class="tab-content">
     <div class="app-header">
       <div>
-        <div style="font-size:11px;color:var(--text-muted);font-weight:600;letter-spacing:1px;text-transform:uppercase;">기록 내역</div>
+        <div class="header-label">기록 내역</div>
         <h2 id="historyMonthLabel">2026년 1월</h2>
       </div>
       <div class="header-actions">
-        <div class="icon-btn" onclick="exportCurrentMonth()" title="엑셀 내보내기">📊</div>
+        <div class="icon-btn" onclick="exportCurrentMonth()">📊</div>
       </div>
     </div>
     <div class="content">
@@ -597,17 +488,17 @@
           <button class="month-btn" onclick="changeHistoryMonth(-1)">‹</button>
           <button class="month-btn" onclick="changeHistoryMonth(1)">›</button>
         </div>
-        <button class="btn btn-primary" style="padding:8px 16px;font-size:12px;" onclick="exportCurrentMonth()">엑셀 내보내기</button>
+        <button class="btn btn-primary" style="padding:9px 16px;font-size:12px;" onclick="exportCurrentMonth()">CSV 내보내기</button>
       </div>
       <div id="historyContent"></div>
     </div>
   </div>
 
   <!-- EMPLOYEES TAB -->
-  <div id="employeesTab" class="tab-content" style="display:none;">
+  <div id="employeesTab" class="tab-content">
     <div class="app-header">
       <div>
-        <div style="font-size:11px;color:var(--text-muted);font-weight:600;letter-spacing:1px;text-transform:uppercase;">직원 관리</div>
+        <div class="header-label">직원 관리</div>
         <h2>직원 목록</h2>
       </div>
     </div>
@@ -748,11 +639,9 @@ const firebaseConfig = {
 
 // ─── 허용 이메일 (여기에 본인 + 와이프 구글 계정 이메일 추가) ───
 const ALLOWED_EMAILS = [
-  "qorky01@gmail.com",
-  "playlab2020dmc@gmail.com"
-];
   // 예시: "your@gmail.com", "wife@gmail.com"
   // 아래에 실제 이메일 입력하세요
+];
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -794,6 +683,7 @@ window.signInWithGoogle = async () => {
     const email = result.user.email;
     if (ALLOWED_EMAILS.length > 0 && !ALLOWED_EMAILS.includes(email)) {
       await signOut(auth);
+      try { localStorage.clear(); sessionStorage.clear(); } catch(e) {}
       hideLoading();
       showLoginError(`접근 권한이 없습니다 (${email})`);
       return;
@@ -808,7 +698,10 @@ onAuthStateChanged(auth, async (user) => {
   if (user) {
     if (ALLOWED_EMAILS.length > 0 && !ALLOWED_EMAILS.includes(user.email)) {
       await signOut(auth);
+      // 로컬 스토리지·세션 클리어
+      try { localStorage.clear(); sessionStorage.clear(); } catch(e) {}
       hideLoading();
+      showScreen('loginScreen');
       showLoginError(`접근 권한이 없습니다 (${user.email})`);
       return;
     }
@@ -1325,6 +1218,10 @@ function breakLabel_(min) {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  // appScreen은 flex layout
+  if (id === 'appScreen') {
+    document.getElementById(id).style.display = 'flex';
+  }
 }
 function showLoading() { document.getElementById('loadingOverlay').style.display = 'flex'; }
 function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
